@@ -18,8 +18,6 @@ var noteResolution = 0;		// 0 == 16th, 1 == 8th, 2 == quarter note
 var noteLength = 0.05;		// length of "beep" (in seconds)
 var timerID = 0;		// setInterval identifier.
 
-var canvas,       		// the canvas element
-    canvasContext;  		// canvasContext is the canvas' context 2D
 var last16thNoteDrawn = 0;	// the last "box" we drew on the screen
 var notesInQueue = [];      	// the notes that have been put into the web audio,
 				// and may or may not have played yet. {note, time}
@@ -36,7 +34,6 @@ var k =0;
 var cnt =2;
 var nextK = k;
 
-var timelineWidth;
 var zoom = 1;
 var zoom4;
 
@@ -173,7 +170,7 @@ DAW.stop = function()
     current16thNote = 0;
     
     //clear cursor
-    drawTimeline();
+    DAW.drawTimeline();
     
     if (isPlaying) {
 	 isPlaying = false;
@@ -198,7 +195,7 @@ function schedStepBack(time) {
 	k=0;
 	nextK=k;
 	pauseBeat = 0;
-	drawTimeline();
+	DAW.drawTimeline();
     }
     drawCursor(0);
     
@@ -216,10 +213,10 @@ function draw() {
 	    clockOutput();
 	    
 	    if (k == nextK) {
-		nextK+=4;
-    
-		drawTimeline();
-		drawCursor(k);
+            nextK+=4;
+
+            DAW.drawTimeline();
+            drawCursor(k);
 	    }
 	    k++
 	 }
@@ -229,49 +226,53 @@ function draw() {
     requestAnimFrame(draw);
 }
 
-function drawTimeline(){
-    canvasContext.clearRect(0,0,canvas.width, canvas.height);
-    canvasContext.fillStyle = "black";
-    canvasContext.lineWidth = 1;
-    for(var i=0;i<timelineWidth;i+=pixelsPer4){	
-        canvasContext.moveTo(i,0);
-        canvasContext.lineTo(i,10); 	
-        canvasContext.stroke();
+DAW.drawTimeline = function ()
+{
+    console.log('##redraw timeline');
+    DAW.timelineCanvasContext.clearRect(
+        0, 0, DAW.timelineCanvas.width, DAW.timelineCanvas.height
+    );
+    DAW.timelineCanvasContext.fillStyle = "black";
+    DAW.timelineCanvasContext.lineWidth = 1;
+    for(var i=0;i<DAW.timelineWidth;i+=pixelsPer4){
+        DAW.timelineCanvasContext.moveTo(i,0);
+        DAW.timelineCanvasContext.lineTo(i,10);
+        DAW.timelineCanvasContext.stroke();
     }
-    canvasContext.fillText("Bar",4,20);
+    DAW.timelineCanvasContext.fillText("Bar",4,20);
     
     var bar = 2;
-    for(var i=31;i<timelineWidth;i+=(2*pixelsPer4)){
-        canvasContext.fillText(bar*zoom, i, 20);
+    for(var i=31; i<DAW.timelineWidth;i+=(2*pixelsPer4)){
+        DAW.timelineCanvasContext.fillText(bar*zoom, i, 20);
         bar+=2;
     }
 }
 
 function timelineZoomIn() {
-    canvasContext.clearRect(0,0,canvas.width, canvas.height);
+    DAW.timelineCanvasContext.clearRect(0,0,canvas.width, canvas.height);
     zoom /= 2;
     resetCanvas();
-    console.log("in");
+    console.log("##zoom in");
 }
 
 function timelineZoomOut() {
-    canvasContext.clearRect(0,0,canvas.width, canvas.height);
+    DAW.timelineCanvasContext.clearRect(0,0,canvas.width, canvas.height);
     zoom *= 2;
     resetCanvas();
-    console.log("out");
+    console.log("##zoom out");
 }
 
 function drawCursor(bar) {
-    canvasContext.fillStyle = "FF9900";
-    canvasContext.fillRect(bar*pixelsPer16/zoom, 0, pixelsPer4/zoom, 10 );
+    DAW.timelineCanvasContext.fillStyle = "FF9900";
+    DAW.timelineCanvasContext.fillRect(bar*pixelsPer16/zoom, 0, pixelsPer4/zoom, 10 );
 }
 
 function cursorJump(bar) {
     if (isStopped) {
-	isStopped = false;
-	isPaused = true;
+        isStopped = false;
+        isPaused = true;
     }
-    drawTimeline();
+    DAW.drawTimeline();
     drawCursor(bar*4);
     
    if (isPlaying) {
@@ -284,7 +285,7 @@ function cursorJump(bar) {
     nextK=k;
     current16thNote = k;
     if (isPaused) {
-	pauseBeat = k;
+	    pauseBeat = k;
     }
     clockOutput(k);
     //console.log(current16thNote);
@@ -323,37 +324,37 @@ function formatTime(t) {
 function resetCanvas (e) {
     // resize the canvas - but remember - this clears the canvas too.
     
-    timelineWidth = (.7446808510638297 * window.innerWidth - 20) * .829787234042553 - 20; 
+    DAW.timelineWidth = (.7446808510638297 * window.innerWidth - 20) * .829787234042553 - 20;
     
     if (zoom <=1) {
-	timelineWidth /= zoom;
+	    DAW.timelineWidth /= zoom;
     }
     
-    canvas.width = timelineWidth;
+    DAW.timelineCanvas.width = DAW.timelineWidth;
     
 
     //make sure we scroll to the top left.
     //window.scrollTo(0,0);
-    drawTimeline();
+    DAW.drawTimeline();
     drawCursor(k);
      //requestAnimFrame(draw);	// start the drawing loop.
 }
 
 function initSched(params){
-    canvas = document.getElementById( "timeline" );
-    canvas.addEventListener("click" , function(e){
+    DAW.timelineCanvas = document.getElementById( "timeline" );
+    DAW.timelineCanvas.addEventListener("click" , function(e){
 						    var relX = e.offsetX;
-						    var bar =Math.floor(relX/pixelsPer4);
+						    var bar = Math.floor(relX/pixelsPer4);
 						    cursorJump(bar);
 						}, false);
 			    
-    canvasContext = canvas.getContext( '2d' );
-    canvasContext.font = '8pt Calibri';
-    canvasContext.textAlign = 'center';
+    DAW.timelineCanvasContext = DAW.timelineCanvas.getContext('2d');
+    DAW.timelineCanvasContext.font = '8pt Calibri';
+    DAW.timelineCanvasContext.textAlign = 'center';
     
     //0.744... is hardcoded for bootstrap span9 and 0.829 is for span 10. -20s are for left margins on each
-    timelineWidth = (.7446808510638297 * window.innerWidth - 20) * .829787234042553 - 20; 
-    canvas.width = timelineWidth;
+    DAW.timelineWidth = (.7446808510638297 * window.innerWidth - 20) * .829787234042553 - 20;
+    DAW.timelineCanvas.width = DAW.timelineWidth;
     
     requestAnimFrame(draw);	// start the drawing loop.
     

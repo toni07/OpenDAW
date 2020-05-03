@@ -9,7 +9,8 @@ const createTrack = function(trackNumber, effects) {
           }
 
           DAW.tracks[trackNumber] = {
-            recording: false
+            recording: false,
+            canvas: null
           };
 
            let html = "";
@@ -40,138 +41,150 @@ const createTrack = function(trackNumber, effects) {
           if(effects[trackNumber-1] == null){
       	    effects[trackNumber-1] = [];
           }
-          $("#volumeSlider"+trackNumber).slider({
-      	value: 80,
-      	orientation: "horizontal",
-      	range: "min",
-      	min: 0,
-      	max: 100,
-      	animate: true,
-      	slide: function( event, ui ) {
-      	    var muteTrackNumber = $(this).attr('id').split('volumeSlider')[1];
-      	    setTrackVolume(muteTrackNumber, ui.value );
-      	}
-          });
-          $("#selectTrack"+trackNumber).click(function(){
-      	var printTrackNumber = $(this).attr('id').split('selectTrack')[1];
-      	activeTrack = printTrackNumber;
-      	//compensation for off by one (track1 = effects[0])
-      	$(".effect").addClass("hidden");
-      	$.each(effects[activeTrack-1], function(){
-      	    var currentEffect = this;
-      	    $("#"+currentEffect.type).removeClass("hidden");
-      	    if(currentEffect.type == "Compressor"){
-      		$("#compressorThresholdKnob").val(currentEffect.threshold).trigger('change');
-      		$("#compressorRatioKnob").val(currentEffect.ratio).trigger('change');
-      		$("#compressorAttackKnob").val(currentEffect.attack*1000).trigger('change');
-      	    }
-      	    if(currentEffect.type == "Filter"){
-                  $("#filterCutoffKnob").val(currentEffect.cutoff).trigger('change');
-                  $("#filterQKnob").val(currentEffect.q).trigger('change');
-                  $("#filterTypeKnob").val(currentEffect.filterType).trigger('change');
-      	    }
-      	    if(currentEffect.type == "Reverb"){
-                  $("#reverbWetDryKnob").val(currentEffect.wetDry);
-                  $("#reverbIrSelectKnob").val(currentEffect.ir);
 
-      	    }
-      	    if(currentEffect.type == "Delay"){
-      		    $("#delayTimeKnob").val(currentEffect.time);
-      		    $("#delayFeedbackKnob").val(currentEffect.feedback);
-      		    $("#delayWetDryKnob").val(currentEffect.wetDry);
-      	    }
-      	    if(currentEffect.type == "Tremelo"){
-                  $("#tremeloRateKnob").val(currentEffect.rate).trigger('change');
-                  $("#tremeloDepthKnob").val(currentEffect.depth).trigger('change');
-      	    }
-      	});
-      	Object.keys(effects[activeTrack-1]);
-      	$("#trackEffectsHeader").html("Track "+printTrackNumber);
-      	$("#trackEffects").css("display","block");
-      	$("#masterControl").css("display","block");
+          setUIControls(trackNumber);
+
+
+
+
+      function setUIControls(trackNumber)
+      {
+        $("#volumeSlider"+trackNumber).slider({
+                value: 80,
+                orientation: "horizontal",
+                range: "min",
+                min: 0,
+                max: 100,
+                animate: true,
+                slide: function(event, ui) {
+                    setTrackVolume(trackNumber, ui.value);
+                }
           });
+
+          $("#selectTrack"+trackNumber).click(function(){
+                var printTrackNumber = $(this).attr('id').split('selectTrack')[1];
+                activeTrack = printTrackNumber;
+                //compensation for off by one (track1 = effects[0])
+                $(".effect").addClass("hidden");
+                $.each(effects[activeTrack-1], function(){
+                    var currentEffect = this;
+                    $("#"+currentEffect.type).removeClass("hidden");
+                    if(currentEffect.type == "Compressor"){
+                    $("#compressorThresholdKnob").val(currentEffect.threshold).trigger('change');
+                    $("#compressorRatioKnob").val(currentEffect.ratio).trigger('change');
+                    $("#compressorAttackKnob").val(currentEffect.attack*1000).trigger('change');
+                    }
+                    if(currentEffect.type == "Filter"){
+                          $("#filterCutoffKnob").val(currentEffect.cutoff).trigger('change');
+                          $("#filterQKnob").val(currentEffect.q).trigger('change');
+                          $("#filterTypeKnob").val(currentEffect.filterType).trigger('change');
+                    }
+                    if(currentEffect.type == "Reverb"){
+                          $("#reverbWetDryKnob").val(currentEffect.wetDry);
+                          $("#reverbIrSelectKnob").val(currentEffect.ir);
+
+                    }
+                    if(currentEffect.type == "Delay"){
+                        $("#delayTimeKnob").val(currentEffect.time);
+                        $("#delayFeedbackKnob").val(currentEffect.feedback);
+                        $("#delayWetDryKnob").val(currentEffect.wetDry);
+                    }
+                    if(currentEffect.type == "Tremelo"){
+                          $("#tremeloRateKnob").val(currentEffect.rate).trigger('change');
+                          $("#tremeloDepthKnob").val(currentEffect.depth).trigger('change');
+                    }
+                });
+                Object.keys(effects[activeTrack-1]);
+                $("#trackEffectsHeader").html("Track "+printTrackNumber);
+                $("#trackEffects").css("display","block");
+                $("#masterControl").css("display","block");
+          });
+
           $("#mute"+trackNumber).click(function(){
-      	$(this).button('toggle');
-      	var muteTrackNumber = $(this).attr('id').split('mute')[1];
-      	$('body').trigger('mute-event', muteTrackNumber);
+                $(this).button('toggle');
+                var muteTrackNumber = $(this).attr('id').split('mute')[1];
+                $('body').trigger('mute-event', muteTrackNumber);
           });
            $("#solo"+trackNumber).click(function(){
-      	$(this).button('toggle');
-      	var soloTrackNumber = $(this).attr('id').split('solo')[1];
-      	$('body').trigger('solo-event', soloTrackNumber);
+                $(this).button('toggle');
+                var soloTrackNumber = $(this).attr('id').split('solo')[1];
+                $('body').trigger('solo-event', soloTrackNumber);
           });
 
-      $("#record"+trackNumber).click(function(){
-        recordTrack($(this));
-      });
+          $("#record"+trackNumber).click(function(){
+              recordTrack($(this));
+            });
 
 
-      $("#track"+trackNumber+"title").storage({
-      	storageKey : 'track'+trackNumber
-          });
-          $( "#track"+trackNumber ).droppable({
-      	accept: ".librarySample",
-      	drop: function( event, ui ) {
-      	    var startBar = Math.floor((ui.offset.left-$(this).offset().left)/6);
-      	    var sampleStartTime = startBar;
-      	    var rand = parseInt(Math.random() * 10000);
-      	    var span = document.createElement('span');
-      	    var sampleID = ui.helper.attr("data-id");
-      	    var sampleDuration = ui.helper.attr("data-duration");
-      	    var sampleURL = ui.helper.attr("data-url");
-      	    span.id = "sample" + sampleID + "Span" + rand;
-      	    var canvas = document.createElement('canvas');
-      	    canvas.className = "sample";
-      	    canvas.id = "sample" + sampleID + "Canvas" + rand;
-      	    $(this).append(span);
-      	    $("#sample" + sampleID + "Span" + rand).append(canvas);
-      	    $("#sample" + sampleID + "Span" + rand).width(parseFloat(sampleDuration) * ((pixelsPer4*bpm)/60));
-      	    canvas.width = parseFloat(sampleDuration) * ((pixelsPer4*bpm)/60);
-      	    canvas.height = 80;
-      	    $( "#sample" + sampleID + "Span" + rand).attr('data-startTime',startBar);
-      	    $( "#sample" + sampleID + "Span" + rand).css('left',"" + startBar*pixelsPer16 + "px");
-      	    $( "#sample" + sampleID + "Span" + rand).css('position','absolute');
-      	    $( "#sample" + sampleID + "Span" + rand).draggable({
-      		axis: "x",
-      		containment: "parent",
-      		grid: [pixelsPer16, 0],		//grid snaps to 16th notes
-      		stop: function() {
-      		    var currentStartBar = $(this).attr('data-startTime');
-      		    times[currentStartBar] = jQuery.removeFromArray(sampleID, times[currentStartBar]);
-      		    $(this).attr('data-startTime',parseInt($(this).css('left'))/pixelsPer16);
-      		    var newStartTime = $(this).attr('data-startTime');
-      		    if(times[newStartTime] == null){
-      			times[newStartTime] = [{id: sampleID, track: trackNumber}];
-      		    } else {
-      			times[newStartTime].push({id: sampleID, track: trackNumber});
-      		    }
-      		}
-      	    });
+            $("#track"+trackNumber+"title").storage({
+                storageKey : 'track'+trackNumber
+            });
 
-      	    var wavesurfer = Object.create(WaveSurfer);
-      	    wavesurfer.init({
-      		canvas: canvas,
-      		waveColor: 'violet',
-      		progressColor: 'purple',
-      		loadingColor: 'purple',
-      		cursorColor: 'navy',
-      		audioContext: ac
-      	    });
-      	    wavesurfer.load(sampleURL);
-      	    globalWavesurfers.push(wavesurfer);
-      	    if(buffers[sampleID]==undefined){
-      		load(sampleURL, sampleID);
-      	    }
-      	    if(times[sampleStartTime] == null){
-      		times[sampleStartTime] = [{id: sampleID, track: trackNumber}];
-      	    } else {
-      		times[sampleStartTime].push({id: sampleID, track: trackNumber});
-      	    }
-      	}
-          });
+            $( "#track"+trackNumber ).droppable({
+                accept: ".librarySample",
+                drop: function( event, ui ) {
+                    var startBar = Math.floor((ui.offset.left-$(this).offset().left)/6);
+                    var sampleStartTime = startBar;
+                    var rand = parseInt(Math.random() * 10000);
+                    var span = document.createElement('span');
+                    var sampleID = ui.helper.attr("data-id");
+                    var sampleDuration = ui.helper.attr("data-duration");
+                    var sampleURL = ui.helper.attr("data-url");
+                    span.id = "sample" + sampleID + "Span" + rand;
+
+                    const canvas = document.createElement('canvas');
+                    canvas.className = "sample";
+                    canvas.id = "sample" + sampleID + "Canvas" + rand;
+                    $(this).append(span);
+                    $("#sample" + sampleID + "Span" + rand).append(canvas);
+                    $("#sample" + sampleID + "Span" + rand).width(parseFloat(sampleDuration) * ((pixelsPer4*bpm)/60));
+                    canvas.width = parseFloat(sampleDuration) * ((pixelsPer4*bpm)/60);
+                    canvas.height = 80;
+                    $( "#sample" + sampleID + "Span" + rand).attr('data-startTime',startBar);
+                    $( "#sample" + sampleID + "Span" + rand).css('left',"" + startBar*pixelsPer16 + "px");
+                    $( "#sample" + sampleID + "Span" + rand).css('position','absolute');
+                    $( "#sample" + sampleID + "Span" + rand).draggable({
+                    axis: "x",
+                    containment: "parent",
+                    grid: [pixelsPer16, 0],		//grid snaps to 16th notes
+                    stop: function() {
+                        var currentStartBar = $(this).attr('data-startTime');
+                        times[currentStartBar] = jQuery.removeFromArray(sampleID, times[currentStartBar]);
+                        $(this).attr('data-startTime',parseInt($(this).css('left'))/pixelsPer16);
+                        var newStartTime = $(this).attr('data-startTime');
+                        if(times[newStartTime] == null){
+                        times[newStartTime] = [{id: sampleID, track: trackNumber}];
+                        } else {
+                        times[newStartTime].push({id: sampleID, track: trackNumber});
+                        }
+                    }
+                });
+
+                var wavesurfer = Object.create(WaveSurfer);
+                    wavesurfer.init({
+                    canvas: DAW.tracks[trackNumber].canvas,
+                    waveColor: 'violet',
+                    progressColor: 'purple',
+                    loadingColor: 'purple',
+                    cursorColor: 'navy',
+                    audioContext: ac
+                    });
+                    wavesurfer.load(sampleURL);
+                    globalWavesurfers.push(wavesurfer);
+                    if(buffers[sampleID]==undefined){
+                    load(sampleURL, sampleID);
+                    }
+                    if(times[sampleStartTime] == null){
+                    times[sampleStartTime] = [{id: sampleID, track: trackNumber}];
+                    } else {
+                    times[sampleStartTime].push({id: sampleID, track: trackNumber});
+                    }
+                }
+                });
+      }
 
 
-        function recordTrack($jQDomElem)
+      function recordTrack($jQDomElem)
         {
             var trackNumber = $jQDomElem.attr('id').split('record')[1];
             $jQDomElem.button('toggle');
@@ -222,12 +235,12 @@ const createTrack = function(trackNumber, effects) {
                 span.id = "recording" + DAW.fakeRecordingCount + "Span";
                 $("#track"+recordTrackNumber).append(span);
 
-                const canvas = document.createElement('canvas');
-                canvas.className = "sample";
-                canvas.id = "recording" + DAW.fakeRecordingCount + "Canvas";
+                DAW.tracks[trackNumber].canvas = document.createElement('canvas');
+                DAW.tracks[trackNumber].canvas.className = "sample";
+                DAW.tracks[trackNumber].canvas.id = "recording" + DAW.fakeRecordingCount + "Canvas";
 
                 const $jQSpan = $("#recording" + DAW.fakeRecordingCount + "Span");
-                $jQSpan.append(canvas);
+                $jQSpan.append(DAW.tracks[trackNumber].canvas);
                 $jQSpan.width(parseFloat(recordingDuration) * ((pixelsPer4*bpm)/60));
                 $jQSpan.attr('data-startTime',startBar);
                 $jQSpan.css('left',"" + startBar*pixelsPer16 + "px");
@@ -252,8 +265,8 @@ const createTrack = function(trackNumber, effects) {
                     console.log("New Start Time: "+ newStartTime);
                     }
                 });
-                canvas.width = parseFloat(recordingDuration) * ((pixelsPer4*bpm)/60);
-                canvas.height = 80;
+                DAW.tracks[trackNumber].canvas.width = parseFloat(recordingDuration) * ((pixelsPer4*bpm)/60);
+                DAW.tracks[trackNumber].canvas.height = 80;
 
                 manageWavExport(newBuffer, startBar, recordTrackNumber);
             });
@@ -265,7 +278,7 @@ const createTrack = function(trackNumber, effects) {
                 var url = URL.createObjectURL(blob);
                 var wavesurfer = Object.create(WaveSurfer);
                 wavesurfer.init({
-                canvas: canvas,
+                canvas: DAW.tracks[recordTrackNumber].canvas,
                 waveColor: '#08c',
                 progressColor: '#08c',
                 loadingColor: 'purple',
