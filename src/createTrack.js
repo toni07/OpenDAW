@@ -8,6 +8,10 @@ const createTrack = function(trackNumber, effects) {
             effects = [];
           }
 
+          DAW.tracks[trackNumber] = {
+            recording: false
+          };
+
            let html = "";
            html+= "<div class=\"row-fluid\" id=\"selectTrack"+trackNumber+"\">";
            html+= "     <div class=\"span2 trackBox\" style=\"height: 84px;\">";
@@ -167,29 +171,34 @@ const createTrack = function(trackNumber, effects) {
           });
 
 
-        function recordTrack($jQDomElem) {
-            console.log('##in record');
-
-            var recordTrackNumber = $jQDomElem.attr('id').split('record')[1];
+        function recordTrack($jQDomElem)
+        {
+            var trackNumber = $jQDomElem.attr('id').split('record')[1];
             $jQDomElem.button('toggle');
-            if($jQDomElem.hasClass('active')){
+
+            if (!DAW.tracks[trackNumber].recording)
+            {
                 //Start Recording
                 console.log('##start recording');
+                DAW.tracks[trackNumber].recording = true;
 
                 var input = ac.createMediaStreamSource(micStream);
                 //input.connect(ac.destination);
-                activeRecorder = new Recorder(input);
-                activeRecorder.record();
+                DAW.activeRecorder = new Recorder(input);
+                DAW.activeRecorder.record();
                 schedPlay(ac.currentTime);
             }
             else {
-                stopRecordingTrack(recordTrackNumber);
+                stopRecordingTrack(trackNumber);
             }
         }
 
         function stopRecordingTrack(recordTrackNumber) {
             //Stop Recording
-            activeRecorder.stop();
+            console.log('##stop recordiing');
+            DAW.tracks[recordTrackNumber].recording = false;
+            DAW.activeRecorder.stop();
+            DAW.stop();
 
             var recordingDuration;
 
@@ -200,52 +209,59 @@ const createTrack = function(trackNumber, effects) {
                 startBar = pauseBeat;
             }
 
-            activeRecorder.getBuffer(function(recordingBuffer){
-            recordingDuration = recordingBuffer[0].length/ac.sampleRate;
+            DAW.activeRecorder.getBuffer(function(recordingBuffer){
+                recordingDuration = recordingBuffer[0].length/ac.sampleRate;
 
-            var newBuffer = ac.createBuffer( 2, recordingBuffer[0].length, ac.sampleRate );
-            //var newSource = ac.createBufferSourceNode();
-            newBuffer.getChannelData(0).set(recordingBuffer[0]);
-            newBuffer.getChannelData(1).set(recordingBuffer[1]);
-            //newSource.buffer = newBuffer;
+                var newBuffer = ac.createBuffer( 2, recordingBuffer[0].length, ac.sampleRate );
+                //var newSource = ac.createBufferSourceNode();
+                newBuffer.getChannelData(0).set(recordingBuffer[0]);
+                newBuffer.getChannelData(1).set(recordingBuffer[1]);
+                //newSource.buffer = newBuffer;
 
-            var span = document.createElement('span');
-            span.id = "recording" + recordingCount + "Span";
-            var canvas = document.createElement('canvas');
-            canvas.className = "sample";
-            canvas.id = "recording" + recordingCount + "Canvas";
-            $("#track"+recordTrackNumber).append(span);
+                const span = document.createElement('span');
+                span.id = "recording" + DAW.fakeRecordingCount + "Span";
+                $("#track"+recordTrackNumber).append(span);
 
-            let $jQSpan = $("#recording" + recordingCount + "Span");
-            $jQSpan.append(canvas);
-            $jQSpan.width(parseFloat(recordingDuration) * ((pixelsPer4*bpm)/60));
-            $jQSpan.attr('data-startTime',startBar);
-            $jQSpan.css('left',"" + startBar*pixelsPer16 + "px");
-            $jQSpan.css('position','absolute');
-            $jQSpan.draggable({
-                axis: "x",
-                containment: "parent",
-                grid: [pixelsPer16, 0],		//grid snaps to 16th notes
-                stop: function() {
-                //get rid of old entry in table
-                var currentRecordingCount = parseInt($(this).attr('id').split('recording')[1]);
-                var currentStartBar = $(this).attr('data-startTime');
-                times[currentStartBar] = jQuery.removeFromArray(currentRecordingCount, times[currentStartBar]);
-                $(this).attr('data-startTime',parseInt($(this).css('left'))/pixelsPer16);
-                var newStartTime = $(this).attr('data-startTime');
-                if(times[newStartTime] == null){
-                    times[newStartTime] = [{id: currentRecordingCount, track: recordTrackNumber}];
-                } else {
-                    times[newStartTime].push({id: currentRecordingCount, track: recordTrackNumber});
-                }
-                console.log("Old Start Time: "+ currentStartBar);
-                console.log("New Start Time: "+ newStartTime);
-                }
+                const canvas = document.createElement('canvas');
+                canvas.className = "sample";
+                canvas.id = "recording" + DAW.fakeRecordingCount + "Canvas";
+
+                const $jQSpan = $("#recording" + DAW.fakeRecordingCount + "Span");
+                $jQSpan.append(canvas);
+                $jQSpan.width(parseFloat(recordingDuration) * ((pixelsPer4*bpm)/60));
+                $jQSpan.attr('data-startTime',startBar);
+                $jQSpan.css('left',"" + startBar*pixelsPer16 + "px");
+                $jQSpan.css('position','absolute');
+                $jQSpan.draggable({
+                    axis: "x",
+                    containment: "parent",
+                    grid: [pixelsPer16, 0],		//grid snaps to 16th notes
+                    stop: function() {
+                    //get rid of old entry in table
+                    var currentRecordingCount = parseInt($(this).attr('id').split('recording')[1]);
+                    var currentStartBar = $(this).attr('data-startTime');
+                    times[currentStartBar] = jQuery.removeFromArray(currentRecordingCount, times[currentStartBar]);
+                    $(this).attr('data-startTime',parseInt($(this).css('left'))/pixelsPer16);
+                    var newStartTime = $(this).attr('data-startTime');
+                    if(times[newStartTime] == null){
+                        times[newStartTime] = [{id: currentRecordingCount, track: recordTrackNumber}];
+                    } else {
+                        times[newStartTime].push({id: currentRecordingCount, track: recordTrackNumber});
+                    }
+                    console.log("Old Start Time: "+ currentStartBar);
+                    console.log("New Start Time: "+ newStartTime);
+                    }
+                });
+                canvas.width = parseFloat(recordingDuration) * ((pixelsPer4*bpm)/60);
+                canvas.height = 80;
+
+                manageWavExport(newBuffer, startBar, recordTrackNumber);
             });
-            canvas.width = parseFloat(recordingDuration) * ((pixelsPer4*bpm)/60);
-            canvas.height = 80;
+        }
 
-            activeRecorder.exportWAV(function(blob){
+        function manageWavExport(newBuffer, startBar, recordTrackNumber)
+        {
+            DAW.activeRecorder.exportWAV(function(blob){
                 var url = URL.createObjectURL(blob);
                 var wavesurfer = Object.create(WaveSurfer);
                 wavesurfer.init({
@@ -258,15 +274,17 @@ const createTrack = function(trackNumber, effects) {
                 });
                 wavesurfer.load(url);
                 globalWavesurfers.push(wavesurfer);
-                buffers[recordingCount] = {buffer: newBuffer};
+                buffers[DAW.fakeRecordingCount] = {buffer: newBuffer};
 
-                if(times[startBar] == null){
-                times[startBar] = [{id: recordingCount, track: recordTrackNumber}];
-                } else {
-                times[startBar].push({id: recordingCount, track: recordTrackNumber});
+                if (times[startBar] == null)
+                {
+                    times[startBar] = [{id: DAW.fakeRecordingCount, track: recordTrackNumber}];
                 }
-                recordingCount++;
-            });
+                else
+                {
+                    times[startBar].push({id: DAW.fakeRecordingCount, track: recordTrackNumber});
+                }
+                DAW.fakeRecordingCount++;
             });
         }
 

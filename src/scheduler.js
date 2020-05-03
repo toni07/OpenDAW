@@ -161,7 +161,8 @@ function schedPlay(time) {
     }
 }
 
-function schedStop(){
+DAW.stop = function()
+{
    window.clearTimeout( timerID );
    activeSources.forEach(function(element){
 	    element.sourceNode.stop(0);

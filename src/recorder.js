@@ -7,7 +7,7 @@
     var bufferLen = config.bufferLen || 4096;
     this.context = source.context;
     this.node = this.context.createScriptProcessor(bufferLen, 2, 2);
-    console.log('##config', config);
+
     var worker = new Worker(config.workerPath || WORKER_PATH);
     worker.postMessage({
       command: 'init',
@@ -15,11 +15,13 @@
         sampleRate: this.context.sampleRate
       }
     });
+
     var recording = false,
       currCallback;
 
     this.node.onaudioprocess = function(e){
       if (!recording) return;
+
       worker.postMessage({
         command: 'record',
         buffer: [
@@ -57,7 +59,12 @@
     this.exportWAV = function(cb, type){
       currCallback = cb || config.callback;
       type = type || config.type || 'audio/wav';
-      if (!currCallback) throw new Error('Callback not set');
+
+      if (!currCallback)
+      {
+        throw new Error('Callback not set');
+      }
+
       worker.postMessage({
         command: 'exportWAV',
         type: type

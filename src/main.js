@@ -5,8 +5,6 @@ masterGainNode.gain.value = .8;
 masterGainNode.connect(ac.destination);
 
 var micStream;
-var activeRecorder;
-var recordingCount = 1000;
 
 //array of track master gain nodes
 var trackMasterGains = [];
@@ -208,9 +206,7 @@ initSched({
 $('body').bind('playPause-event', function(e){
     schedPlay(ac.currentTime);
 });
-$('body').bind('stop-event', function(e){
-    schedStop();
-});
+
 $('body').bind('stepBackward-event', function(e){
     schedStepBack(ac.currentTime);
 });
@@ -573,9 +569,7 @@ $(document).ready(function(){
     $("#playPause").click(function(){
         $('body').trigger('playPause-event');
     });
-    $("#stop").click(function(){
-        $('body').trigger('stop-event');
-    });
+
     $("#step-backward").click(function(){
         $('body').trigger('stepBackward-event');
     });
